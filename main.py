@@ -3,7 +3,6 @@ import logging
 import sqlite3
 import requests
 import random
-import string
 import asyncio
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -15,10 +14,10 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# Твой токен (будет из переменных окружения)
+# Твой токен
 BOT_TOKEN = "8419033501:AAECCXZBqUeHTBs-EvF7dr5bm-mt2Cd6v0Q"
 
-# Твой ID админа (куда приходят уведомления о новых заказах)
+# Твой ID админа
 ADMIN_IDS = [7871625571]
 
 # Пакеты Telegram Stars
@@ -33,19 +32,19 @@ STAR_PACKAGES = {
     "700": {"stars": 700, "price": 1085}
 }
 
-# Реквизиты для разных банков (ЗАМЕНИ НА СВОИ КАРТЫ!)
+# Реквизиты для разных банков (ОБНОВЛЕНО С ВАШИМИ ДАННЫМИ)
 BANK_DETAILS = {
     "sber": {
         "name": "Сбербанк",
-        "card_number": "2202 2082 1248 1809",  # Номер твоей карты Сбер
-        "recipient": "АРТЁМ Р",  # Твое имя как на карте
+        "card_number": "2202 2082 1248 1809",
+        "recipient": "АРТЁМ Р",
         "color": "🟢",
         "description": "Перевод по номеру карты"
     },
     "tinkoff": {
         "name": "Тинькофф", 
-        "card_number": "5536 9140 0907 1360",  # Номер твоей карты Тинькофф
-        "recipient": "АРТЁМ Р",  # Твое имя как на карте
+        "card_number": "5536 9140 0907 1360",
+        "recipient": "АРТЁМ Р",
         "color": "🟡",
         "description": "Перевод по номеру карты"
     }
@@ -56,7 +55,7 @@ AUTO_STARS_CONFIG = {
     "enabled": True,
     "bot_token": BOT_TOKEN,
     "admin_chat_id": ADMIN_IDS[0],
-    "auto_send_delay": 30,
+    "auto_send_delay": 5,
 }
 
 # Генерация номера заказа
@@ -340,7 +339,7 @@ async def create_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👤 **Получатель:** {bank_info['recipient']}\n\n"
         f"🔔 **После оплаты:**\n"
         f"{auto_delivery}\n"
-        f"• При проблемах пишите @ваш_админ\n\n"
+        f"• При проблемах пишите @M1rnes\n\n"
         f"💡 *Обязательно укажите комментарий {order_number}*"
     )
     
@@ -383,7 +382,7 @@ async def manual_complete_order(update: Update, context: ContextTypes.DEFAULT_TY
                 f"✅ **Заказ #{order_number} выполнен!**\n\n"
                 f"⭐ Вам начислено: {stars} Stars\n"
                 f"🎉 Спасибо за покупку!\n\n"
-                f"При возникновении вопросов обращайтесь к @ваш_админ"
+                f"При возникновении вопросов обращайтесь к @M1rnes"
             )
         except Exception as e:
             logging.error(f"Не удалось уведомить пользователя {user_id}: {e}")
