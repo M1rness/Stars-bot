@@ -383,7 +383,7 @@ async def manual_complete_order(update: Update, context: ContextTypes.DEFAULT_TY
                 f"✅ **Заказ #{order_number} выполнен!**\n\n"
                 f"⭐ Вам начислено: {stars} Stars\n"
                 f"🎉 Спасибо за покупку!\n\n"
-                f"При возникновении вопросов обращайтесь к @ваш_админ"
+                f"При возникновении вопросов обращайтесь к @M1rnes"
             )
         except Exception as e:
             logging.error(f"Не удалось уведомить пользователя {user_id}: {e}")
@@ -505,7 +505,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🏦 **Доступные банки:**\n"
         f"{banks_list}\n\n"
         f"❓ **Проблемы с оплатой?**\n"
-        f"Напишите @ваш_админ"
+        f"Напишите @M1rnes"
     )
     
     await query.edit_message_text(help_text, parse_mode='Markdown')
