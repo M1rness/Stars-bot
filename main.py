@@ -16,10 +16,10 @@ logging.basicConfig(
 )
 
 # Твой токен (будет из переменных окружения)
-BOT_TOKEN = os.environ.get('BOT_TOKEN')
+BOT_TOKEN = "8419033501:AAECCXZBqUeHTBs-EvF7dr5bm-mt2Cd6v0Q"
 
 # Твой ID админа (куда приходят уведомления о новых заказах)
-ADMIN_IDS = [7871625571]  # Замени на свой ID
+ADMIN_IDS = [7871625571]
 
 # Пакеты Telegram Stars
 STAR_PACKAGES = {
@@ -37,22 +37,21 @@ STAR_PACKAGES = {
 BANK_DETAILS = {
     "sber": {
         "name": "Сбербанк",
-        "card_number": "2202 2082 1248 1809",  # Номер твоей карты Сбер
+        "card_number": 2202208212481809",  # Номер твоей карты Сбер
         "recipient": "АРТЁМ Р",  # Твое имя как на карте
         "color": "🟢",
         "description": "Перевод по номеру карты"
     },
     "tinkoff": {
         "name": "Тинькофф", 
-        "card_number": "5536 9140 0907 1360",  # Номер твоей карты Тинькофф
+        "card_number": "5536914009071360",  # Номер твоей карты Тинькофф
         "recipient": "АРТЁМ Р",  # Твое имя как на карте
         "color": "🟡",
         "description": "Перевод по номеру карты"
     }
 }
 
-# Настройки для автоматической выдачи
-AUTO_STARS_CONFIG = {
+# Настройки для автоматической выдачи AUTO_STARS_CONFIG = {
     "enabled": True,
     "bot_token": BOT_TOKEN,
     "admin_chat_id": ADMIN_IDS[0],
@@ -111,7 +110,7 @@ async def auto_send_stars(context, user_id: int, stars: int, order_number: int):
             f"⭐ Вам начислено: {stars} Stars\n"
             f"💰 Сумма: {STAR_PACKAGES.get(str(stars), {}).get('price', 'N/A')} руб\n\n"
             f"Спасибо за покупку! 🚀\n"
-            f"При возникновении вопросов обращайтесь к @ваш_админ"
+            f"При возникновении вопросов обращайтесь к @M1rnes"
         )
         
         # Уведомляем админа об успешной автовыдаче
@@ -383,7 +382,7 @@ async def manual_complete_order(update: Update, context: ContextTypes.DEFAULT_TY
                 f"✅ **Заказ #{order_number} выполнен!**\n\n"
                 f"⭐ Вам начислено: {stars} Stars\n"
                 f"🎉 Спасибо за покупку!\n\n"
-                f"При возникновении вопросов обращайтесь к @M1rnes"
+                f"При возникновении вопросов обращайтесь к @ваш_админ"
             )
         except Exception as e:
             logging.error(f"Не удалось уведомить пользователя {user_id}: {e}")
@@ -511,7 +510,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(help_text, parse_mode='Markdown')
 
 # Основная функция
-def main():
+async def main():
     # Инициализация базы данных
     init_db()
     
@@ -520,17 +519,18 @@ def main():
     
     # Обработчики команд
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(show_packages, pattern="buy_stars"))
-    application.add_handler(CallbackQueryHandler(select_bank, pattern="package_"))
-    application.add_handler(CallbackQueryHandler(create_order, pattern="bank_"))
-    application.add_handler(CallbackQueryHandler(manual_complete_order, pattern="manual_"))
-    application.add_handler(CallbackQueryHandler(cancel_order, pattern="cancel_"))
-    application.add_handler(CallbackQueryHandler(my_orders, pattern="my_orders"))
-    application.add_handler(CallbackQueryHandler(back_to_main, pattern="back_to_main"))
-    application.add_handler(CallbackQueryHandler(help_command, pattern="help"))
+    application.add_handler(CallbackQueryHandler(show_packages, pattern="^buy_stars$"))
+    application.add_handler(CallbackQueryHandler(select_bank, pattern="^package_"))
+    application.add_handler(CallbackQueryHandler(create_order, pattern="^bank_"))
+    application.add_handler(CallbackQueryHandler(manual_complete_order, pattern="^manual_"))
+    application.add_handler(CallbackQueryHandler(cancel_order, pattern="^cancel_"))
+    application.add_handler(CallbackQueryHandler(my_orders, pattern="^my_orders$"))
+    application.add_handler(CallbackQueryHandler(back_to_main, pattern="^back_to_main$"))
+    application.add_handler(CallbackQueryHandler(help_command, pattern="^help$"))
     
     # Запуск бота
-    application.run_polling()
+    logging.info("🤖 Бот запускается...")
+    await application.run_polling()
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
