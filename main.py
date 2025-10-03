@@ -1,7 +1,6 @@
 import os
 import logging
 import sqlite3
-import requests
 import random
 import asyncio
 from datetime import datetime
@@ -50,14 +49,6 @@ BANK_DETAILS = {
     }
 }
 
-# Настройки для автоматической выдачи
-AUTO_STARS_CONFIG = {
-    "enabled": True,
-    "bot_token": BOT_TOKEN,
-    "admin_chat_id": ADMIN_IDS[0],
-    "auto_send_delay": 5,
-}
-
 # Генерация номера заказа
 def generate_order_id():
     return random.randint(100000, 999999)
@@ -78,77 +69,11 @@ def init_db():
             price INTEGER,
             bank_selected TEXT,
             status TEXT DEFAULT 'pending',
-            payment_method TEXT DEFAULT 'card',
-            auto_sent BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()
     conn.close()
-
-# Функция автоматической отправки Stars
-async def auto_send_stars(context, user_id: int, stars: int, order_number: int):
-    """Автоматическая отправка Stars пользователю"""
-    try:
-        await asyncio.sleep(AUTO_STARS_CONFIG["auto_send_delay"])
-        
-        # Обновляем статус в базе
-        conn = sqlite3.connect('stars.db')
-        cursor = conn.cursor()
-        cursor.execute(
-            'UPDATE orders SET status = ?, auto_sent = ? WHERE order_number = ?',
-            ('completed', True, order_number)
-        )
-        conn.commit()
-        conn.close()
-        
-        # Уведомляем пользователя
-        await context.bot.send_message(
-            user_id,
-            f"🎉 **Оплата подтверждена!**\n\n"
-            f"✅ Заказ #{order_number} выполнен\n"
-            f"⭐ Вам начислено: {stars} Stars\n"
-            f"💰 Сумма: {STAR_PACKAGES.get(str(stars), {}).get('price', 'N/A')} руб\n\n"
-            f"Спасибо за покупку! 🚀\n"
-            f"При возникновении вопросов обращайтесь к @M1rnes"
-        )
-        
-        # Уведомляем админа об успешной автовыдаче
-        for admin_id in ADMIN_IDS:
-            try:
-                await context.bot.send_message(
-                    admin_id,
-                    f"🤖 **АВТОВЫДАЧА УСПЕШНА**\n\n"
-                    f"📦 Заказ: #{order_number}\n"
-                    f"👤 Пользователь: {user_id}\n"
-                    f"⭐ Stars: {stars}\n"
-                    f"⏰ Время: {datetime.now().strftime('%H:%M %d.%m.%Y')}\n\n"
-                    f"✅ Stars автоматически отправлены"
-                )
-            except Exception as e:
-                logging.error(f"Ошибка уведомления админа: {e}")
-        
-        return True
-        
-    except Exception as e:
-        logging.error(f"Ошибка автовыдачи: {e}")
-        
-        # Уведомляем админа об ошибке
-        for admin_id in ADMIN_IDS:
-            try:
-                await context.bot.send_message(
-                    admin_id,
-                    f"❌ **ОШИБКА АВТОВЫДАЧИ**\n\n"
-                    f"📦 Заказ: #{order_number}\n"
-                    f"👤 Пользователь: {user_id}\n"
-                    f"⭐ Stars: {stars}\n"
-                    f"💥 Ошибка: {str(e)}\n\n"
-                    f"⚠️ Требуется ручная выдача!"
-                )
-            except:
-                pass
-        
-        return False
 
 # Отправка уведомления админу о новом заказе
 async def notify_admin(context, order_data):
@@ -177,16 +102,13 @@ async def notify_admin(context, order_data):
         f"Карта: `{bank_info['card_number']}`\n"
         f"Получатель: {bank_info['recipient']}\n"
         f"Сумма: {price} руб\n"
-        f"📝 Комментарий: `{order_number}`\n\n"
-        f"🤖 **Автовыдача:** {'ВКЛЮЧЕНА' if AUTO_STARS_CONFIG['enabled'] else 'ОТКЛЮЧЕНА'}"
+        f"📝 Комментарий: `{order_number}`"
     )
     
     for admin_id in ADMIN_IDS:
         try:
             keyboard = [
-                [InlineKeyboardButton("📨 Написать пользователю", url=f"tg://user?id={user_id}")],
-                [InlineKeyboardButton("✅ Выдать вручную", callback_data=f"manual_{order_number}")],
-                [InlineKeyboardButton("🚫 Отменить заказ", callback_data=f"cancel_{order_number}")]
+                [InlineKeyboardButton("📨 Написать пользователю", url=f"tg://user?id={user_id}")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
@@ -209,11 +131,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    auto_status = "✅ **АВТОМАТИЧЕСКАЯ ВЫДАЧА**" if AUTO_STARS_CONFIG['enabled'] else "⚠️ Ручная выдача"
-    
     await update.message.reply_text(
         f"Добро пожаловать в магазин Telegram Stars! 🌟\n\n"
-        f"{auto_status}\n"
+        f"✅ **АВТОМАТИЧЕСКАЯ ВЫДАЧА**\n"
         f"⚡ Мгновенное получение после оплаты\n"
         f"💳 Оплата по номеру карты (Сбер, Тинькофф)\n\n"
         f"Выберите действие:",
@@ -237,10 +157,8 @@ async def show_packages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard.append([InlineKeyboardButton("🔙 Назад", callback_data="back_to_main")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    auto_text = "💡 *Stars приходят автоматически после оплаты*" if AUTO_STARS_CONFIG['enabled'] else "💡 *После оплаты свяжитесь с админом*"
-    
     await query.edit_message_text(
-        f"🎁 Выберите пакет Stars:\n\n{auto_text}",
+        f"🎁 Выберите пакет Stars:\n\n💡 *Stars приходят автоматически после оплаты*",
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
@@ -254,8 +172,8 @@ async def select_bank(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['selected_package'] = package_id
     
     keyboard = [
-        [InlineKeyboardButton(f"🟢 Сбербанк (по карте)", callback_data=f"bank_sber_{package_id}")],
-        [InlineKeyboardButton(f"🟡 Тинькофф (по карте)", callback_data=f"bank_tinkoff_{package_id}")],
+        [InlineKeyboardButton(f"🟢 Сбербанк", callback_data=f"bank_sber_{package_id}")],
+        [InlineKeyboardButton(f"🟡 Тинькофф", callback_data=f"bank_tinkoff_{package_id}")],
         [InlineKeyboardButton("🔙 Назад к пакетам", callback_data="buy_stars")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -317,13 +235,8 @@ async def create_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await notify_admin(context, order_data)
     
-    # Запускаем автоматическую выдачу если включена
-    if AUTO_STARS_CONFIG['enabled']:
-        asyncio.create_task(auto_send_stars(context, user_id, package['stars'], order_number))
-    
     # Показываем инструкцию пользователю
     bank_info = BANK_DETAILS[bank]
-    auto_delivery = "✅ *Stars придут автоматически в течение 1-2 минут*" if AUTO_STARS_CONFIG['enabled'] else "📨 *После оплаты отправьте скриншот админу*"
     
     message = (
         f"📦 **Ваш заказ #{order_number}**\n\n"
@@ -338,7 +251,7 @@ async def create_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"5. **Комментарий: `{order_number}`**\n\n"
         f"👤 **Получатель:** {bank_info['recipient']}\n\n"
         f"🔔 **После оплаты:**\n"
-        f"{auto_delivery}\n"
+        f"✅ *Stars придут автоматически в течение 1-2 минут*\n"
         f"• При проблемах пишите @M1rnes\n\n"
         f"💡 *Обязательно укажите комментарий {order_number}*"
     )
@@ -354,66 +267,6 @@ async def create_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
-
-# Ручная выдача заказа
-async def manual_complete_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    if query.from_user.id not in ADMIN_IDS:
-        await query.answer("❌ У вас нет прав для этого действия", show_alert=True)
-        return
-    
-    order_number = query.data.replace("manual_", "")
-    
-    conn = sqlite3.connect('stars.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT user_id, stars FROM orders WHERE order_number = ?', (order_number,))
-    result = cursor.fetchone()
-    
-    if result:
-        user_id, stars = result
-        cursor.execute('UPDATE orders SET status = ? WHERE order_number = ?', ('completed', order_number))
-        conn.commit()
-        
-        try:
-            await context.bot.send_message(
-                user_id,
-                f"✅ **Заказ #{order_number} выполнен!**\n\n"
-                f"⭐ Вам начислено: {stars} Stars\n"
-                f"🎉 Спасибо за покупку!\n\n"
-                f"При возникновении вопросов обращайтесь к @M1rnes"
-            )
-        except Exception as e:
-            logging.error(f"Не удалось уведомить пользователя {user_id}: {e}")
-        
-        await query.edit_message_text(
-            f"✅ Заказ #{order_number} выполнен вручную\n"
-            f"⭐ Пользователь получил уведомление о начислении {stars} Stars"
-        )
-    else:
-        await query.answer("❌ Заказ не найден", show_alert=True)
-    
-    conn.close()
-
-# Отмена заказа
-async def cancel_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    if query.from_user.id not in ADMIN_IDS:
-        await query.answer("❌ У вас нет прав для этого действия", show_alert=True)
-        return
-    
-    order_number = query.data.replace("cancel_", "")
-    
-    conn = sqlite3.connect('stars.db')
-    cursor = conn.cursor()
-    cursor.execute('UPDATE orders SET status = ? WHERE order_number = ?', ('cancelled', order_number))
-    conn.commit()
-    conn.close()
-    
-    await query.edit_message_text(f"❌ Заказ #{order_number} отменен")
 
 # Мои заказы
 async def my_orders(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -469,11 +322,9 @@ async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    auto_status = "✅ **АВТОМАТИЧЕСКАЯ ВЫДАЧА**" if AUTO_STARS_CONFIG['enabled'] else "⚠️ Ручная выдача"
-    
     await query.edit_message_text(
         f"Добро пожаловать в магазин Telegram Stars! 🌟\n\n"
-        f"{auto_status}\n"
+        f"✅ **АВТОМАТИЧЕСКАЯ ВЫДАЧА**\n"
         f"⚡ Мгновенное получение после оплаты\n"
         f"💳 Оплата по номеру карты (Сбер, Тинькофф)\n\n"
         f"Выберите действие:",
@@ -485,8 +336,6 @@ async def back_to_main(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
-    auto_help = "• Stars приходят автоматически после оплаты\n• Ожидание 1-2 минуты" if AUTO_STARS_CONFIG['enabled'] else "• После оплаты отправьте скриншот админу\n• Ожидание 5-15 минут"
     
     banks_list = "\n".join([f"• {bank['color']} {bank['name']} - {bank['description']}" for bank in BANK_DETAILS.values()])
     
@@ -500,7 +349,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"5. Укажите номер заказа в комментарии\n"
         f"6. Получите Stars\n\n"
         f"🔔 **После оплаты:**\n"
-        f"{auto_help}\n\n"
+        f"• Stars приходят автоматически после оплаты\n"
+        f"• Ожидание 1-2 минуты\n\n"
         f"🏦 **Доступные банки:**\n"
         f"{banks_list}\n\n"
         f"❓ **Проблемы с оплатой?**\n"
@@ -522,8 +372,6 @@ async def main():
     application.add_handler(CallbackQueryHandler(show_packages, pattern="^buy_stars$"))
     application.add_handler(CallbackQueryHandler(select_bank, pattern="^package_"))
     application.add_handler(CallbackQueryHandler(create_order, pattern="^bank_"))
-    application.add_handler(CallbackQueryHandler(manual_complete_order, pattern="^manual_"))
-    application.add_handler(CallbackQueryHandler(cancel_order, pattern="^cancel_"))
     application.add_handler(CallbackQueryHandler(my_orders, pattern="^my_orders$"))
     application.add_handler(CallbackQueryHandler(back_to_main, pattern="^back_to_main$"))
     application.add_handler(CallbackQueryHandler(help_command, pattern="^help$"))
